@@ -46,6 +46,10 @@ namespace CrazyRooftop.Player
 
         [Header("Stable Movement")]
         public float MaxStableMoveSpeed = 10f;
+        public float MinStableMoveSpeed = 2f; // Starting speed
+        [Tooltip("Time in seconds to reach max speed from min speed")]
+        public float TimeToMaxSpeed = 2f;
+        public float DecelerationRate = 10f; // How fast to slow down when stopping
         public float StableMovementSharpness = 15f;
         public float OrientationSharpness = 10f;
         public OrientationMethod OrientationMethod = OrientationMethod.TowardsCamera;
@@ -88,6 +92,9 @@ namespace CrazyRooftop.Player
 
         private Vector3 lastInnerNormal = Vector3.zero;
         private Vector3 lastOuterNormal = Vector3.zero;
+        
+        // Acceleration system
+        private float _currentTargetSpeed = 0f;
 
         private void Awake()
         {
@@ -294,10 +301,28 @@ namespace CrazyRooftop.Player
                             // Reorient velocity on slope
                             currentVelocity = Motor.GetDirectionTangentToSurface(currentVelocity, effectiveGroundNormal) * currentVelocityMagnitude;
 
-                            // Calculate target velocity
+                            // ACCELERATION SYSTEM
+                            // If there's movement input, accelerate
+                            if (_moveInputVector.sqrMagnitude > 0f)
+                            {
+                                // Calculate acceleration rate from TimeToMaxSpeed
+                                float accelerationRate = (MaxStableMoveSpeed - MinStableMoveSpeed) / Mathf.Max(TimeToMaxSpeed, 0.01f);
+                                
+                                // Gradually increase target speed
+                                _currentTargetSpeed += accelerationRate * deltaTime;
+                                _currentTargetSpeed = Mathf.Clamp(_currentTargetSpeed, MinStableMoveSpeed, MaxStableMoveSpeed);
+                            }
+                            else
+                            {
+                                // Decelerate when no input
+                                _currentTargetSpeed -= DecelerationRate * deltaTime;
+                                _currentTargetSpeed = Mathf.Max(_currentTargetSpeed, 0f);
+                            }
+
+                            // Calculate target velocity with current speed
                             Vector3 inputRight = Vector3.Cross(_moveInputVector, Motor.CharacterUp);
                             Vector3 reorientedInput = Vector3.Cross(effectiveGroundNormal, inputRight).normalized * _moveInputVector.magnitude;
-                            Vector3 targetMovementVelocity = reorientedInput * MaxStableMoveSpeed;
+                            Vector3 targetMovementVelocity = reorientedInput * _currentTargetSpeed;
 
                             // Smooth movement Velocity
                             currentVelocity = Vector3.Lerp(currentVelocity, targetMovementVelocity, 1f - Mathf.Exp(-StableMovementSharpness * deltaTime));
