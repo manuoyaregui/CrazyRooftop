@@ -9,6 +9,7 @@ namespace CrazyRooftop.Player
     public enum CharacterState
     {
         Default,
+        Sliding,
     }
 
     public enum OrientationMethod
@@ -50,6 +51,9 @@ namespace CrazyRooftop.Player
         [Tooltip("Time in seconds to reach max speed from min speed")]
         public float TimeToMaxSpeed = 2f;
         public float DecelerationRate = 10f; // How fast to slow down when stopping
+        [Range(0f, 1f)]
+        [Tooltip("Percentage of MinStableMoveSpeed that the player moves at when crouching")]
+        public float MaxCrouchSpeedPercent = 0.8f;
         public float StableMovementSharpness = 15f;
         public float OrientationSharpness = 10f;
         public OrientationMethod OrientationMethod = OrientationMethod.TowardsCamera;
@@ -65,6 +69,19 @@ namespace CrazyRooftop.Player
         public float JumpScalableForwardSpeed = 10f;
         public float JumpPreGroundingGraceTime = 0f;
         public float JumpPostGroundingGraceTime = 0f;
+
+        [Header("Sliding")]
+        [Range(0f, 1f)]
+        [Tooltip("Percentage of MaxStableMoveSpeed required to initiate a slide")]
+        public float MinSlideSpeedPercent = 0.5f;
+        [Tooltip("Velocity multiplier applied when starting a slide")]
+        public float SlideBoostMultiplier = 1.3f;
+        [Tooltip("Target duration of the slide in seconds")]
+        public float SlideDuration = 1.0f;
+        [Tooltip("Minimum speed before slide automatically ends")]
+        public float MinSlideEndSpeed = 2f;
+        public float SlideCapsuleHeight = 0.8f;
+        public float CrouchedCameraHeight = 1.0f;
 
         [Header("Misc")]
         public List<Collider> IgnoredColliders = new List<Collider>();
@@ -95,6 +112,13 @@ namespace CrazyRooftop.Player
         
         // Acceleration system
         private float _currentTargetSpeed = 0f;
+        
+        // Sliding system
+        private bool _isSliding = false;
+        private Vector3 _slideDirection = Vector3.zero;
+        private float _slideSpeed = 0f;
+        private float _currentSlideDecelerationRate = 0f;
+        private float _standingCameraHeight;
 
         private void Awake()
         {
@@ -103,6 +127,12 @@ namespace CrazyRooftop.Player
 
             // Assign the characterController to the motor
             Motor.CharacterController = this;
+
+            // Store initial camera height
+            if (CameraFollowPoint)
+            {
+                _standingCameraHeight = CameraFollowPoint.localPosition.y;
+            }
         }
 
         /// <summary>
@@ -160,6 +190,23 @@ namespace CrazyRooftop.Player
             }
             Quaternion cameraPlanarRotation = Quaternion.LookRotation(cameraPlanarDirection, Motor.CharacterUp);
 
+            // Update crouching state (Global)
+            if (inputs.CrouchDown)
+            {
+                _shouldBeCrouching = true;
+            }
+            else if (inputs.CrouchUp)
+            {
+                _shouldBeCrouching = false;
+            }
+
+            // Update jump state (Global)
+            if (inputs.JumpDown)
+            {
+                _timeSinceJumpRequested = 0f;
+                _jumpRequested = true;
+            }
+
             switch (CurrentCharacterState)
             {
                 case CharacterState.Default:
@@ -177,30 +224,50 @@ namespace CrazyRooftop.Player
                                 break;
                         }
 
-                        // Jumping input
-                        if (inputs.JumpDown)
-                        {
-                            _timeSinceJumpRequested = 0f;
-                            _jumpRequested = true;
-                        }
-
-                        // Crouching input
+                        // Check for slide initiation
                         if (inputs.CrouchDown)
                         {
-                            _shouldBeCrouching = true;
-
-                            if (!_isCrouching)
+                            // Check if we should slide (fast enough and grounded)
+                            if (!_isCrouching && !_isSliding && Motor.GroundingStatus.IsStableOnGround)
                             {
+                                float currentSpeed = Motor.Velocity.magnitude;
+                                float minSlideSpeed = MaxStableMoveSpeed * MinSlideSpeedPercent;
+                                
+                                // Initiate slide if moving fast enough
+                                if (currentSpeed >= minSlideSpeed)
+                                {
+                                    TransitionToState(CharacterState.Sliding);
+                                    _isSliding = true;
+                                    
+                                    // Store slide direction (current movement direction)
+                                    _slideDirection = Motor.Velocity.normalized;
+                                    
+                                    // Apply boost to current speed
+                                    _slideSpeed = currentSpeed * SlideBoostMultiplier;
+                                    
+                                    // Calculate deceleration to reach MinSlideEndSpeed in SlideDuration
+                                    _currentSlideDecelerationRate = (_slideSpeed - MinSlideEndSpeed) / Mathf.Max(SlideDuration, 0.01f);
+                                    
+                                    // Set capsule to slide height
+                                    Motor.SetCapsuleDimensions(0.5f, SlideCapsuleHeight, SlideCapsuleHeight * 0.5f);
+                                    MeshRoot.localScale = new Vector3(1f, 0.4f, 1f);
+                                }
+                                else
+                                {
+                                    // Normal crouch if not fast enough
+                                    _isCrouching = true;
+                                    Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
+                                    MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                }
+                            }
+                            else if (!_isCrouching)
+                            {
+                                // Normal crouch
                                 _isCrouching = true;
                                 Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
                                 MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
                             }
                         }
-                        else if (inputs.CrouchUp)
-                        {
-                            _shouldBeCrouching = false;
-                        }
-
                         break;
                     }
             }
@@ -277,6 +344,19 @@ namespace CrazyRooftop.Player
                         }
                         break;
                     }
+                case CharacterState.Sliding:
+                    {
+                        // During slide, maintain rotation in slide direction
+                        if (_slideDirection.sqrMagnitude > 0f)
+                        {
+                            currentRotation = Quaternion.LookRotation(_slideDirection, Motor.CharacterUp);
+                        }
+
+                        Vector3 currentUp = (currentRotation * Vector3.up);
+                        Vector3 smoothedGravityDir = Vector3.Slerp(currentUp, Vector3.up, 1 - Mathf.Exp(-BonusOrientationSharpness * deltaTime));
+                        currentRotation = Quaternion.FromToRotation(currentUp, smoothedGravityDir) * currentRotation;
+                        break;
+                    }
             }
         }
 
@@ -308,9 +388,18 @@ namespace CrazyRooftop.Player
                                 // Calculate acceleration rate from TimeToMaxSpeed
                                 float accelerationRate = (MaxStableMoveSpeed - MinStableMoveSpeed) / Mathf.Max(TimeToMaxSpeed, 0.01f);
                                 
-                                // Gradually increase target speed
-                                _currentTargetSpeed += accelerationRate * deltaTime;
-                                _currentTargetSpeed = Mathf.Clamp(_currentTargetSpeed, MinStableMoveSpeed, MaxStableMoveSpeed);
+                                // If crouching (and not sliding), limit speed and prevent acceleration beyond limit
+                                if (_isCrouching && !_isSliding)
+                                {
+                                    float maxCrouchSpeed = MinStableMoveSpeed * MaxCrouchSpeedPercent;
+                                    _currentTargetSpeed = maxCrouchSpeed;
+                                }
+                                else
+                                {
+                                    // Gradually increase target speed
+                                    _currentTargetSpeed += accelerationRate * deltaTime;
+                                    _currentTargetSpeed = Mathf.Clamp(_currentTargetSpeed, MinStableMoveSpeed, MaxStableMoveSpeed);
+                                }
                             }
                             else
                             {
@@ -410,6 +499,126 @@ namespace CrazyRooftop.Player
                         }
                         break;
                     }
+                case CharacterState.Sliding:
+                    {
+                        // Slide movement (only on ground)
+                        if (Motor.GroundingStatus.IsStableOnGround)
+                        {
+                            // Decelerate slide speed
+                            _slideSpeed -= _currentSlideDecelerationRate * deltaTime;
+                            
+                            // Check if slide should end
+                            bool shouldEndSlide = false;
+                            
+                            // End if speed too low
+                            if (_slideSpeed <= MinSlideEndSpeed)
+                            {
+                                shouldEndSlide = true;
+                            }
+                            
+                            // End if player released crouch button
+                            if (!_shouldBeCrouching)
+                            {
+                                shouldEndSlide = true;
+                            }
+                            
+                            if (shouldEndSlide)
+                            {
+                                // Exit slide state
+                                _isSliding = false;
+                                TransitionToState(CharacterState.Default);
+                                
+                                // Transition to crouch or standing based on button state and space
+                                if (_shouldBeCrouching)
+                                {
+                                    _isCrouching = true;
+                                    Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
+                                    MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                }
+                                else
+                                {
+                                    // Try to stand up
+                                    Motor.SetCapsuleDimensions(0.5f, 2f, 1f);
+                                    if (Motor.CharacterOverlap(
+                                        Motor.TransientPosition,
+                                        Motor.TransientRotation,
+                                        _probedColliders,
+                                        Motor.CollidableLayers,
+                                        QueryTriggerInteraction.Ignore) > 0)
+                                    {
+                                        // If obstructions, go to crouch
+                                        _isCrouching = true;
+                                        Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
+                                        MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                    }
+                                    else
+                                    {
+                                        // Stand up successfully
+                                        MeshRoot.localScale = new Vector3(1f, 1f, 1f);
+                                        _isCrouching = false;
+                                    }
+                                }
+                                
+                                // Reset target speed for normal movement
+                                _currentTargetSpeed = _slideSpeed;
+                            }
+                            
+                            // Apply slide velocity in locked direction
+                            Vector3 effectiveGroundNormal = Motor.GroundingStatus.GroundNormal;
+                            Vector3 slideDirectionOnSlope = Motor.GetDirectionTangentToSurface(_slideDirection, effectiveGroundNormal).normalized;
+                            currentVelocity = slideDirectionOnSlope * _slideSpeed;
+                        }
+                        else
+                        {
+                            // If we leave the ground during slide, exit slide state
+                            _isSliding = false;
+                            TransitionToState(CharacterState.Default);
+                            
+                            // Apply gravity
+                            currentVelocity += Gravity * deltaTime;
+                        }
+                        
+                        // Handle jumping during slide
+                        _jumpedThisFrame = false;
+                        _timeSinceJumpRequested += deltaTime;
+                        if (_jumpRequested)
+                        {
+                            // See if we actually are allowed to jump
+                            if (!_jumpConsumed && ((AllowJumpingWhenSliding ? Motor.GroundingStatus.FoundAnyGround : Motor.GroundingStatus.IsStableOnGround) || _timeSinceLastAbleToJump <= JumpPostGroundingGraceTime))
+                            {
+                                // Calculate jump direction before ungrounding
+                                Vector3 jumpDirection = Motor.CharacterUp;
+                                if (Motor.GroundingStatus.FoundAnyGround && !Motor.GroundingStatus.IsStableOnGround)
+                                {
+                                    jumpDirection = Motor.GroundingStatus.GroundNormal;
+                                }
+
+                                // Exit slide when jumping
+                                _isSliding = false;
+                                TransitionToState(CharacterState.Default);
+                                Motor.SetCapsuleDimensions(0.5f, 2f, 1f);
+                                MeshRoot.localScale = new Vector3(1f, 1f, 1f);
+                                _isCrouching = false;
+
+                                Motor.ForceUnground();
+
+                                // Add to the return velocity and reset jump state
+                                currentVelocity += (jumpDirection * JumpUpSpeed) - Vector3.Project(currentVelocity, Motor.CharacterUp);
+                                currentVelocity += (_slideDirection * JumpScalableForwardSpeed);
+                                _jumpRequested = false;
+                                _jumpConsumed = true;
+                                _jumpedThisFrame = true;
+                            }
+                        }
+                        
+                        // Take into account additive velocity
+                        if (_internalVelocityAdd.sqrMagnitude > 0f)
+                        {
+                            currentVelocity += _internalVelocityAdd;
+                            _internalVelocityAdd = Vector3.zero;
+                        }
+                        break;
+                    }
             }
         }
 
@@ -471,6 +680,51 @@ namespace CrazyRooftop.Player
                         }
                         break;
                     }
+                case CharacterState.Sliding:
+                    {
+                        // Handle jump-related values during slide
+                        {
+                            // Handle jumping pre-ground grace period
+                            if (_jumpRequested && _timeSinceJumpRequested > JumpPreGroundingGraceTime)
+                            {
+                                _jumpRequested = false;
+                            }
+
+                            if (AllowJumpingWhenSliding ? Motor.GroundingStatus.FoundAnyGround : Motor.GroundingStatus.IsStableOnGround)
+                            {
+                                // If we're on a ground surface, reset jumping values
+                                if (!_jumpedThisFrame)
+                                {
+                                    _jumpConsumed = false;
+                                }
+                                _timeSinceLastAbleToJump = 0f;
+                            }
+                            else
+                            {
+                                // Keep track of time since we were last able to jump (for grace period)
+                                _timeSinceLastAbleToJump += deltaTime;
+                            }
+                        }
+                        break;
+                    }
+            }
+
+            // Handle Camera Height
+            if (CameraFollowPoint)
+            {
+                float targetHeight = _standingCameraHeight;
+                if (_isSliding)
+                {
+                    targetHeight = CrouchedCameraHeight;
+                }
+                else if (_isCrouching)
+                {
+                    targetHeight = CrouchedCameraHeight;
+                }
+
+                Vector3 targetPos = CameraFollowPoint.localPosition;
+                targetPos.y = targetHeight;
+                CameraFollowPoint.localPosition = Vector3.Lerp(CameraFollowPoint.localPosition, targetPos, 10f * deltaTime);
             }
         }
 
