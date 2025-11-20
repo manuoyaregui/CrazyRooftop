@@ -13,9 +13,9 @@ namespace CrazyRooftop.Player
         public float FollowingSharpness = 10000f;
 
         [Header("Distance")]
-        public float DefaultDistance = 6f;
+        public float DefaultDistance = 0f; // First person
         public float MinDistance = 0f;
-        public float MaxDistance = 10f;
+        public float MaxDistance = 0f; // Locked to first person
         public float DistanceMovementSpeed = 5f;
         public float DistanceMovementSharpness = 10f;
 
@@ -108,66 +108,11 @@ namespace CrazyRooftop.Player
                 // Apply rotation
                 Transform.rotation = targetRotation;
 
-                // Process distance input
-                if (_distanceIsObstructed && Mathf.Abs(zoomInput) > 0f)
-                {
-                    TargetDistance = _currentDistance;
-                }
-                TargetDistance += zoomInput * DistanceMovementSpeed;
-                TargetDistance = Mathf.Clamp(TargetDistance, MinDistance, MaxDistance);
-
-                // Find the smoothed follow position
+                // FIRST PERSON: Camera position is directly at the follow point (no distance offset)
                 _currentFollowPosition = Vector3.Lerp(_currentFollowPosition, FollowTransform.position, 1f - Mathf.Exp(-FollowingSharpness * deltaTime));
 
-                // Handle obstructions
-                {
-                    RaycastHit closestHit = new RaycastHit();
-                    closestHit.distance = Mathf.Infinity;
-                    _obstructionCount = Physics.SphereCastNonAlloc(_currentFollowPosition, ObstructionCheckRadius, -Transform.forward, _obstructions, TargetDistance, ObstructionLayers, QueryTriggerInteraction.Ignore);
-                    for (int i = 0; i < _obstructionCount; i++)
-                    {
-                        bool isIgnored = false;
-                        for (int j = 0; j < IgnoredColliders.Count; j++)
-                        {
-                            if (IgnoredColliders[j] == _obstructions[i].collider)
-                            {
-                                isIgnored = true;
-                                break;
-                            }
-                        }
-                        for (int j = 0; j < IgnoredColliders.Count; j++)
-                        {
-                            if (IgnoredColliders[j] == _obstructions[i].collider)
-                            {
-                                isIgnored = true;
-                                break;
-                            }
-                        }
-
-                        if (!isIgnored && _obstructions[i].distance < closestHit.distance && _obstructions[i].distance > 0)
-                        {
-                            closestHit = _obstructions[i];
-                        }
-                    }
-
-                    // If obstructions detecter
-                    if (closestHit.distance < Mathf.Infinity)
-                    {
-                        _distanceIsObstructed = true;
-                        _currentDistance = Mathf.Lerp(_currentDistance, closestHit.distance, 1 - Mathf.Exp(-ObstructionSharpness * deltaTime));
-                    }
-                    // If no obstruction
-                    else
-                    {
-                        _distanceIsObstructed = false;
-                        _currentDistance = Mathf.Lerp(_currentDistance, TargetDistance, 1 - Mathf.Exp(-DistanceMovementSharpness * deltaTime));
-                    }
-                }
-
-                // Find the smoothed camera orbit position
-                Vector3 targetPosition = _currentFollowPosition - ((targetRotation * Vector3.forward) * _currentDistance);
-
-                // Handle framing
+                // Handle framing offset
+                Vector3 targetPosition = _currentFollowPosition;
                 targetPosition += Transform.right * FollowPointFraming.x;
                 targetPosition += Transform.up * FollowPointFraming.y;
 

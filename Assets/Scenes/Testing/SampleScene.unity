@@ -462,7 +462,7 @@ MonoBehaviour:
   MaxAirMoveSpeed: 15
   AirAccelerationSpeed: 18
   Drag: 0.1
-  AllowJumpingWhenSliding: 0
+  AllowJumpingWhenSliding: 1
   JumpUpSpeed: 10
   JumpScalableForwardSpeed: 10
   JumpPreGroundingGraceTime: 0
