@@ -82,6 +82,8 @@ namespace CrazyRooftop.Player
         public float MinSlideEndSpeed = 2f;
         [Tooltip("Gravity acceleration applied when sliding down a slope")]
         public float SlideGravity = 20f;
+        [Tooltip("Multiplier for gravity when sliding down a slope to make it feel stronger")]
+        public float SlopeSlideGravityMultiplier = 2.0f;
         public float SlideCapsuleHeight = 0.8f;
         public float CrouchedCameraHeight = 1.0f;
 
@@ -226,11 +228,12 @@ namespace CrazyRooftop.Player
                                 break;
                         }
 
-                        // Check for slide initiation
-                        if (inputs.CrouchDown)
+                        // Check for slide initiation or crouching
+                        if (_shouldBeCrouching)
                         {
                             // Check if we should slide (fast enough and grounded)
-                            if (!_isCrouching && !_isSliding && Motor.GroundingStatus.IsStableOnGround)
+                            // We can slide if we are grounded and (fast enough OR on slope)
+                            if (!_isSliding && Motor.GroundingStatus.IsStableOnGround)
                             {
                                 float currentSpeed = Motor.Velocity.magnitude;
                                 float minSlideSpeed = MaxStableMoveSpeed * MinSlideSpeedPercent;
@@ -238,17 +241,28 @@ namespace CrazyRooftop.Player
                                 // Initiate slide if moving fast enough and NOT moving uphill
                                 // We check dot product with Up to see if we are gaining height
                                 bool isMovingUphill = Vector3.Dot(Motor.Velocity.normalized, Motor.CharacterUp) > 0.1f;
+                                
+                                // Check if we are on a downward slope (even if standing still)
+                                bool isOnSlope = Vector3.Dot(Motor.GroundingStatus.GroundNormal, Motor.CharacterUp) < 0.99f;
 
-                                if (currentSpeed >= minSlideSpeed && !isMovingUphill)
+                                if ((currentSpeed >= minSlideSpeed && !isMovingUphill) || isOnSlope)
                                 {
                                     TransitionToState(CharacterState.Sliding);
                                     _isSliding = true;
                                     
-                                    // Store slide direction (current movement direction)
-                                    _slideDirection = Motor.Velocity.normalized;
+                                    // Store slide direction
+                                    if (currentSpeed > 0.1f)
+                                    {
+                                        _slideDirection = Motor.Velocity.normalized;
+                                    }
+                                    else
+                                    {
+                                        // If standing still on slope, slide direction is the slope downward direction
+                                        _slideDirection = Vector3.ProjectOnPlane(Vector3.down, Motor.GroundingStatus.GroundNormal).normalized;
+                                    }
                                     
                                     // Apply boost to current speed
-                                    _slideSpeed = currentSpeed * SlideBoostMultiplier;
+                                    _slideSpeed = Mathf.Max(currentSpeed * SlideBoostMultiplier, MinSlideEndSpeed);
                                     
                                     // Calculate deceleration to reach MinSlideEndSpeed in SlideDuration
                                     _currentSlideDecelerationRate = (_slideSpeed - MinSlideEndSpeed) / Mathf.Max(SlideDuration, 0.01f);
@@ -259,15 +273,18 @@ namespace CrazyRooftop.Player
                                 }
                                 else
                                 {
-                                    // Normal crouch if not fast enough
-                                    _isCrouching = true;
-                                    Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
-                                    MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                    // Normal crouch if not fast enough and not on slope
+                                    if (!_isCrouching)
+                                    {
+                                        _isCrouching = true;
+                                        Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
+                                        MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                    }
                                 }
                             }
                             else if (!_isCrouching)
                             {
-                                // Normal crouch
+                                // Normal crouch (in air or not stable)
                                 _isCrouching = true;
                                 Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
                                 MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
@@ -519,7 +536,7 @@ namespace CrazyRooftop.Player
                             if (slopeDot < -0.01f) // Sliding down
                             {
                                 // Accelerate based on slope steepness
-                                _slideSpeed += SlideGravity * -slopeDot * deltaTime;
+                                _slideSpeed += SlideGravity * SlopeSlideGravityMultiplier * -slopeDot * deltaTime;
                             }
                             else
                             {
