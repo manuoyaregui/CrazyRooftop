@@ -94,6 +94,12 @@ namespace CrazyRooftop.Player
         public Vector3 Gravity = new Vector3(0, -30f, 0);
         public Transform MeshRoot;
         public Transform CameraFollowPoint;
+        public Camera PlayerCamera;
+        public float SlideCameraTilt = 15f;
+        public float CameraTiltSharpness = 10f;
+        public float SlideFOV = 80f;
+        public float FOVSpeed = 5f;
+        public float CrouchScaleSharpness = 10f;
         public float CrouchedCapsuleHeight = 1f;
 
         public CharacterState CurrentCharacterState { get; private set; }
@@ -123,6 +129,8 @@ namespace CrazyRooftop.Player
         private float _slideSpeed = 0f;
         private float _currentSlideDecelerationRate = 0f;
         private float _standingCameraHeight;
+        private float _defaultFOV;
+        private Vector3 _targetMeshScale = Vector3.one;
 
         private void Awake()
         {
@@ -136,6 +144,16 @@ namespace CrazyRooftop.Player
             if (CameraFollowPoint)
             {
                 _standingCameraHeight = CameraFollowPoint.localPosition.y;
+            }
+
+            if (PlayerCamera)
+            {
+                _defaultFOV = PlayerCamera.fieldOfView;
+            }
+            else if (CameraFollowPoint)
+            {
+                 PlayerCamera = CameraFollowPoint.GetComponent<Camera>();
+                 if (PlayerCamera) _defaultFOV = PlayerCamera.fieldOfView;
             }
         }
 
@@ -269,7 +287,7 @@ namespace CrazyRooftop.Player
                                     
                                     // Set capsule to slide height
                                     Motor.SetCapsuleDimensions(0.5f, SlideCapsuleHeight, SlideCapsuleHeight * 0.5f);
-                                    MeshRoot.localScale = new Vector3(1f, 0.4f, 1f);
+                                    _targetMeshScale = new Vector3(1f, 0.4f, 1f);
                                 }
                                 else
                                 {
@@ -278,7 +296,7 @@ namespace CrazyRooftop.Player
                                     {
                                         _isCrouching = true;
                                         Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
-                                        MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                        _targetMeshScale = new Vector3(1f, 0.5f, 1f);
                                     }
                                 }
                             }
@@ -287,7 +305,7 @@ namespace CrazyRooftop.Player
                                 // Normal crouch (in air or not stable)
                                 _isCrouching = true;
                                 Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
-                                MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                _targetMeshScale = new Vector3(1f, 0.5f, 1f);
                             }
                         }
                         break;
@@ -570,7 +588,7 @@ namespace CrazyRooftop.Player
                                 {
                                     _isCrouching = true;
                                     Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
-                                    MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                    _targetMeshScale = new Vector3(1f, 0.5f, 1f);
                                 }
                                 else
                                 {
@@ -586,12 +604,12 @@ namespace CrazyRooftop.Player
                                         // If obstructions, go to crouch
                                         _isCrouching = true;
                                         Motor.SetCapsuleDimensions(0.5f, CrouchedCapsuleHeight, CrouchedCapsuleHeight * 0.5f);
-                                        MeshRoot.localScale = new Vector3(1f, 0.5f, 1f);
+                                        _targetMeshScale = new Vector3(1f, 0.5f, 1f);
                                     }
                                     else
                                     {
                                         // Stand up successfully
-                                        MeshRoot.localScale = new Vector3(1f, 1f, 1f);
+                                        _targetMeshScale = new Vector3(1f, 1f, 1f);
                                         _isCrouching = false;
                                     }
                                 }
@@ -632,7 +650,7 @@ namespace CrazyRooftop.Player
                                 _isSliding = false;
                                 TransitionToState(CharacterState.Default);
                                 Motor.SetCapsuleDimensions(0.5f, 2f, 1f);
-                                MeshRoot.localScale = new Vector3(1f, 1f, 1f);
+                                _targetMeshScale = new Vector3(1f, 1f, 1f);
                                 _isCrouching = false;
 
                                 Motor.ForceUnground();
@@ -709,7 +727,7 @@ namespace CrazyRooftop.Player
                             else
                             {
                                 // If no obstructions, uncrouch
-                                MeshRoot.localScale = new Vector3(1f, 1f, 1f);
+                                _targetMeshScale = new Vector3(1f, 1f, 1f);
                                 _isCrouching = false;
                             }
                         }
@@ -744,13 +762,18 @@ namespace CrazyRooftop.Player
                     }
             }
 
-            // Handle Camera Height
+            // Handle Camera Height and Tilt
             if (CameraFollowPoint)
             {
                 float targetHeight = _standingCameraHeight;
+                Quaternion targetRotation = Quaternion.identity;
+                float targetFOV = _defaultFOV;
+
                 if (_isSliding)
                 {
                     targetHeight = CrouchedCameraHeight;
+                    targetRotation = Quaternion.Euler(0, 0, SlideCameraTilt);
+                    targetFOV = SlideFOV;
                 }
                 else if (_isCrouching)
                 {
@@ -760,6 +783,19 @@ namespace CrazyRooftop.Player
                 Vector3 targetPos = CameraFollowPoint.localPosition;
                 targetPos.y = targetHeight;
                 CameraFollowPoint.localPosition = Vector3.Lerp(CameraFollowPoint.localPosition, targetPos, 10f * deltaTime);
+
+                CameraFollowPoint.localRotation = Quaternion.Slerp(CameraFollowPoint.localRotation, targetRotation, CameraTiltSharpness * deltaTime);
+
+                if (PlayerCamera)
+                {
+                    PlayerCamera.fieldOfView = Mathf.Lerp(PlayerCamera.fieldOfView, targetFOV, FOVSpeed * deltaTime);
+                }
+            }
+
+            // Handle Body Scale Interpolation
+            if (MeshRoot)
+            {
+                MeshRoot.localScale = Vector3.Lerp(MeshRoot.localScale, _targetMeshScale, CrouchScaleSharpness * deltaTime);
             }
         }
 
