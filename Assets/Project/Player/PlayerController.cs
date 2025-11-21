@@ -80,6 +80,8 @@ namespace CrazyRooftop.Player
         public float SlideDuration = 1.0f;
         [Tooltip("Minimum speed before slide automatically ends")]
         public float MinSlideEndSpeed = 2f;
+        [Tooltip("Gravity acceleration applied when sliding down a slope")]
+        public float SlideGravity = 20f;
         public float SlideCapsuleHeight = 0.8f;
         public float CrouchedCameraHeight = 1.0f;
 
@@ -233,8 +235,11 @@ namespace CrazyRooftop.Player
                                 float currentSpeed = Motor.Velocity.magnitude;
                                 float minSlideSpeed = MaxStableMoveSpeed * MinSlideSpeedPercent;
                                 
-                                // Initiate slide if moving fast enough
-                                if (currentSpeed >= minSlideSpeed)
+                                // Initiate slide if moving fast enough and NOT moving uphill
+                                // We check dot product with Up to see if we are gaining height
+                                bool isMovingUphill = Vector3.Dot(Motor.Velocity.normalized, Motor.CharacterUp) > 0.1f;
+
+                                if (currentSpeed >= minSlideSpeed && !isMovingUphill)
                                 {
                                     TransitionToState(CharacterState.Sliding);
                                     _isSliding = true;
@@ -504,8 +509,23 @@ namespace CrazyRooftop.Player
                         // Slide movement (only on ground)
                         if (Motor.GroundingStatus.IsStableOnGround)
                         {
-                            // Decelerate slide speed
-                            _slideSpeed -= _currentSlideDecelerationRate * deltaTime;
+                            // Calculate slope factor
+                            Vector3 effectiveGroundNormal = Motor.GroundingStatus.GroundNormal;
+                            Vector3 slideDirectionOnSlope = Motor.GetDirectionTangentToSurface(_slideDirection, effectiveGroundNormal).normalized;
+                            
+                            // Check if we are sliding down (dot product with Up is negative)
+                            float slopeDot = Vector3.Dot(slideDirectionOnSlope, Motor.CharacterUp);
+                            
+                            if (slopeDot < -0.01f) // Sliding down
+                            {
+                                // Accelerate based on slope steepness
+                                _slideSpeed += SlideGravity * -slopeDot * deltaTime;
+                            }
+                            else
+                            {
+                                // Decelerate slide speed normally if flat or uphill
+                                _slideSpeed -= _currentSlideDecelerationRate * deltaTime;
+                            }
                             
                             // Check if slide should end
                             bool shouldEndSlide = false;
@@ -564,8 +584,6 @@ namespace CrazyRooftop.Player
                             }
                             
                             // Apply slide velocity in locked direction
-                            Vector3 effectiveGroundNormal = Motor.GroundingStatus.GroundNormal;
-                            Vector3 slideDirectionOnSlope = Motor.GetDirectionTangentToSurface(_slideDirection, effectiveGroundNormal).normalized;
                             currentVelocity = slideDirectionOnSlope * _slideSpeed;
                         }
                         else
