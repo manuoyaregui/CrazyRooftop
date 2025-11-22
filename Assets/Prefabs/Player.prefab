@@ -278,7 +278,7 @@ MonoBehaviour:
   StableGroundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  DiscreteCollisionEvents: 0
+  DiscreteCollisionEvents: 1
   StepHandling: 2
   MaxStepHeight: 0.5
   AllowSteppingWithoutStableGrounding: 0
@@ -332,14 +332,24 @@ MonoBehaviour:
   SlideDuration: 1
   MinSlideEndSpeed: 2
   SlideGravity: 20
+  SlopeSlideGravityMultiplier: 10
   SlideCapsuleHeight: 0
   CrouchedCameraHeight: 1
+  SlidePushMassLimit: 10
+  SlidePushForceMultiplier: 5
+  SlidePushUpwardAngle: 15
   IgnoredColliders: []
   BonusOrientationMethod: 1
   BonusOrientationSharpness: 10
   Gravity: {x: 0, y: -30, z: 0}
   MeshRoot: {fileID: 2383663082118762697}
   CameraFollowPoint: {fileID: 5409657030151739297}
+  PlayerCamera: {fileID: 0}
+  SlideCameraTilt: 15
+  CameraTiltSharpness: 10
+  SlideFOV: 80
+  FOVSpeed: 5
+  CrouchScaleSharpness: 10
   CrouchedCapsuleHeight: 1
 --- !u!54 &3773336462574528092
 Rigidbody:

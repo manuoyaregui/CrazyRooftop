@@ -87,6 +87,12 @@ namespace CrazyRooftop.Player
         public float SlopeSlideGravityMultiplier = 2.0f;
         public float SlideCapsuleHeight = 0.8f;
         public float CrouchedCameraHeight = 1.0f;
+        [Tooltip("Maximum mass of objects that can be pushed while sliding")]
+        public float SlidePushMassLimit = 30f;
+        [Tooltip("Force multiplier applied when pushing objects during slide")]
+        public float SlidePushForceMultiplier = 10f;
+        [Tooltip("Upward angle in degrees added to push direction")]
+        public float SlidePushUpwardAngle = 15f;
 
         [Header("Misc")]
         public List<Collider> IgnoredColliders = new List<Collider>();
@@ -391,6 +397,10 @@ namespace CrazyRooftop.Player
 
         public void OnMovementHit(Collider hitCollider, Vector3 hitNormal, Vector3 hitPoint, ref HitStabilityReport hitStabilityReport)
         {
+            if (CurrentState != null)
+            {
+                CurrentState.OnMovementHit(hitCollider, hitNormal, hitPoint, ref hitStabilityReport);
+            }
         }
 
         public void AddVelocity(Vector3 velocity)
@@ -415,6 +425,28 @@ namespace CrazyRooftop.Player
 
         protected void OnLeaveStableGround()
         {
+        }
+
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            // Only process slide impacts when sliding
+            if (IsSliding && collision.collider.attachedRigidbody != null)
+            {
+                Rigidbody rb = collision.collider.attachedRigidbody;
+                
+                if (rb.mass <= SlidePushMassLimit)
+                {
+                    // Calculate push direction with upward angle
+                    Vector3 horizontalDirection = Motor.Velocity.normalized;
+                    Vector3 rotationAxis = Vector3.Cross(horizontalDirection, Motor.CharacterUp);
+                    Vector3 pushDirection = Quaternion.AngleAxis(SlidePushUpwardAngle, rotationAxis) * horizontalDirection;
+                    
+                    // Apply force proportional to slide speed
+                    float forceMagnitude = Motor.Velocity.magnitude * SlidePushForceMultiplier;
+                    rb.AddForce(pushDirection.normalized * forceMagnitude, ForceMode.Impulse);
+                }
+            }
         }
 
         public void OnDiscreteCollisionDetected(Collider hitCollider)

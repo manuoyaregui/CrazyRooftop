@@ -20,5 +20,6 @@ namespace CrazyRooftop.Player
         public virtual void UpdateRotation(ref Quaternion currentRotation, float deltaTime) { }
         public virtual void UpdateVelocity(ref Vector3 currentVelocity, float deltaTime) { }
         public virtual void AfterCharacterUpdate(float deltaTime) { }
+        public virtual void OnMovementHit(Collider hitCollider, Vector3 hitNormal, Vector3 hitPoint, ref HitStabilityReport hitStabilityReport) { }
     }
 }
