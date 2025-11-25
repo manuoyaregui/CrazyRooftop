@@ -31,6 +31,8 @@ MonoBehaviour:
   maxPlacementAttempts: 50
   buildingPrefabs:
   - {fileID: 5428662348953626952, guid: f68a0a972dc46744695f00930486b707, type: 3}
+  - {fileID: 5428662348953626952, guid: 2c25f3d6f71582d49a783b449f103e81, type: 3}
+  - {fileID: 5428662348953626952, guid: 0cf73d0b5335d2a4e8b5e413a545a589, type: 3}
   useProceduralFallback: 1
   buildingMaterial: {fileID: 0}
   showDebugGizmos: 1
