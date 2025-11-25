@@ -247,9 +247,10 @@ namespace CrazyRooftop.Environment
             // Eject player if enabled and we have a reference
             if (ejectBeforeDestroy && playerController != null)
             {
-                Vector3 ejectVelocity = Vector3.up * ejectForce;
+                // Eject in the same direction as the platform's current movement
+                Vector3 ejectVelocity = currentVelocity.normalized * ejectForce;
                 playerController.AddVelocity(ejectVelocity);
-                Debug.Log($"Player ejected with upward force {ejectForce}!");
+                Debug.Log($"Player ejected in direction {currentVelocity.normalized} with force {ejectForce}!");
             }
             
             // Destroy the platform
