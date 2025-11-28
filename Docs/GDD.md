@@ -91,6 +91,19 @@ The city is divided into "Districts" (Stages). Passing a Data Gate transitions t
 3.  **Cyber Slums:** Narrow paths, more verticality.
 4.  **The Cloud:** Floating platforms, high risk of falling.
 
+#### Pacing: The "Safe Zone" (The Lobby)
+*   **Concept:** Between Districts, the player enters a "Data Gate" that leads to a safe, enemy-free transition area.
+*   **The Upgrade Terminal (Roguelite Element):**
+    *   Before leaving the Lobby, the player accesses a terminal offering **3 Random "Hacks" (Upgrades)**. The player must choose **one**.
+    *   **Examples:**
+        *   *Double Jump Module:* Allows a second jump in mid-air.
+        *   *Friction Dampeners:* Sliding maintains speed for 2x longer.
+        *   *Glitch Shield:* Survives one hit from an Agent without dying.
+        *   *Flow Battery:* Flow meter decays 50% slower.
+*   **Function:**
+    *   **Rest & Refit:** A moment to breathe and customize the build for the next run.
+    *   **Freeze Flow:** The Flow Meter pauses (doesn't decay) while in the Lobby.
+
 ---
 
 ## 4. Characters
