@@ -149,6 +149,9 @@ namespace CrazyRooftop.Player
         public Vector3 TargetMeshScale { get; set; } = Vector3.one;
         public Collider[] ProbedColliders { get; private set; } = new Collider[8];
 
+        // Combo Detection Properties
+        public Vector3 CurrentVelocity => Motor.Velocity;
+
         private RaycastHit[] _probedHits = new RaycastHit[8];
         private float _standingCameraHeight;
         private float _defaultFOV;
@@ -227,6 +230,9 @@ namespace CrazyRooftop.Player
             {
                 CurrentState.Enter();
             }
+
+            // Notify combo manager of state change
+            ComboManager.Instance?.OnPlayerStateChanged(newStateEnum);
         }
 
         public BaseCharacterState GetState(CharacterStateEnum stateEnum)
@@ -456,6 +462,8 @@ namespace CrazyRooftop.Player
 
         protected void OnLanded()
         {
+            // Notify combo manager
+            ComboManager.Instance?.OnPlayerLanded();
         }
 
         protected void OnLeaveStableGround()
@@ -486,6 +494,37 @@ namespace CrazyRooftop.Player
 
         public void OnDiscreteCollisionDetected(Collider hitCollider)
         {
+        }
+
+        /// <summary>
+        /// Calculate the maximum possible horizontal speed the player can achieve
+        /// Considers base speed, slide boost, and kick momentum
+        /// </summary>
+        public float GetMaxPossibleHorizontalSpeed()
+        {
+            // Base max speed
+            float maxSpeed = MaxStableMoveSpeed;
+
+            // Add slide boost potential
+            maxSpeed *= SlideBoostMultiplier;
+
+            // Add kick momentum potential
+            float kickBoost = KickForwardSpeed + (maxSpeed * KickMomentumMultiplier);
+            maxSpeed = Mathf.Max(maxSpeed, kickBoost);
+
+            // Add air movement potential
+            maxSpeed = Mathf.Max(maxSpeed, MaxAirMoveSpeed);
+
+            return maxSpeed;
+        }
+
+        /// <summary>
+        /// Calculate the maximum possible vertical speed the player can achieve
+        /// </summary>
+        public float GetMaxPossibleVerticalSpeed()
+        {
+            // Jump + Kick upward speed
+            return JumpUpSpeed + KickUpwardSpeed;
         }
     }
 }
