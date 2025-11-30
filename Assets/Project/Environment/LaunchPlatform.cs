@@ -35,6 +35,9 @@ namespace CrazyRooftop.Environment
         
         [Tooltip("Time in seconds before destroying the platform after crazy launch")]
         [SerializeField] private float destroyDelay = 5f;
+
+        [Tooltip("Maximum distance the player can be from the platform to receive the ejection force")]
+        [SerializeField] private float maxEjectDistance = 5f;
         
         [Header("Detection Settings")]
         [Tooltip("Tag of the player GameObject (default: 'Player')")]
@@ -247,9 +250,15 @@ namespace CrazyRooftop.Environment
             // Eject player if enabled and we have a reference
             if (ejectBeforeDestroy && playerController != null)
             {
-                // Eject in the same direction as the platform's current movement
-                Vector3 ejectVelocity = currentVelocity.normalized * ejectForce;
-                playerController.AddVelocity(ejectVelocity);
+                // Check distance to player
+                float distance = Vector3.Distance(transform.position, playerController.transform.position);
+                
+                if (distance <= maxEjectDistance)
+                {
+                    // Eject in the same direction as the platform's current movement
+                    Vector3 ejectVelocity = currentVelocity.normalized * ejectForce;
+                    playerController.AddVelocity(ejectVelocity);
+                }
             }
             
             // Destroy the platform
