@@ -29,17 +29,6 @@ namespace CrazyRooftop.Player
 
             Instance = this;
 
-            // Auto-find player if not assigned
-            if (PlayerController == null)
-            {
-                PlayerController = FindObjectOfType<PlayerController>();
-            }
-
-            if (PlayerController == null)
-            {
-                Debug.LogWarning("[ComboManager] No PlayerController found!");
-            }
-
             // Initialize all detectors
             foreach (var detector in ComboDetectors)
             {
@@ -48,6 +37,15 @@ namespace CrazyRooftop.Player
                     detector.Reset();
                 }
             }
+        }
+
+        /// <summary>
+        /// Called by PlayerController to register itself with the manager
+        /// </summary>
+        public void RegisterPlayer(PlayerController player)
+        {
+            PlayerController = player;
+            Debug.Log("[ComboManager] Player registered!");
         }
 
         private void Update()

@@ -195,6 +195,12 @@ namespace CrazyRooftop.Player
                 PlayerCamera = Camera.main;
                 if (PlayerCamera) _defaultFOV = PlayerCamera.fieldOfView;
             }
+
+            // Register with ComboManager if it exists
+            if (ComboManager.Instance != null)
+            {
+                ComboManager.Instance.RegisterPlayer(this);
+            }
         }
 
         /// <summary>

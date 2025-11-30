@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1da38db28b5d12d41a44829664ebc3cb, type: 3}
   m_Name: BunnyHopCombo
   m_EditorClassIdentifier: 
-  ComboMessage: Combo detected!
-  Cooldown: 3
-  RequiredSequence: 0000000001000000
-  TimeWindow: 2
-  RequireVelocityIncrease: 0
+  ComboMessage: Bunny Hop!
+  Cooldown: 0.3
+  RequiredSequence: 0000000001000000030000000000000001000000
+  TimeWindow: 5
+  RequireVelocityIncrease: 1

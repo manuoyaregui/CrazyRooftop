@@ -755,7 +755,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &771616550
 Transform:
   m_ObjectHideFlags: 0
@@ -1169,6 +1169,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1195039768}
+  - component: {fileID: 1195039769}
   m_Layer: 0
   m_Name: __ComboManager__
   m_TagString: Untagged
@@ -1191,6 +1192,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1519925356}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1195039769
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1195039767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c1a6b2d780dfd74886dfe10a399686c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  PlayerController: {fileID: 0}
+  ComboDetectors:
+  - {fileID: 11400000, guid: 3a2a9eebb62973b4691cf68834d7969d, type: 2}
+  - {fileID: 11400000, guid: da8146d82eb66e9428703d5e8b4f1ab2, type: 2}
+  - {fileID: 11400000, guid: 11d1a290ed38c8b4582982e49782e7b1, type: 2}
 --- !u!43 &1223396270
 Mesh:
   m_ObjectHideFlags: 0
@@ -1724,7 +1742,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1453129734
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2590,20 +2608,8 @@ PrefabInstance:
       value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 4956798120613141442, guid: 2f0db1d09454e5e48a3267ad5d87754e, type: 3}
-      propertyPath: KickUpwardSpeed
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 4956798120613141442, guid: 2f0db1d09454e5e48a3267ad5d87754e, type: 3}
-      propertyPath: KickForwardSpeed
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 4956798120613141442, guid: 2f0db1d09454e5e48a3267ad5d87754e, type: 3}
-      propertyPath: KickPushForceMultiplier
-      value: 5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4956798120613141442, guid: 2f0db1d09454e5e48a3267ad5d87754e, type: 3}
-      propertyPath: MinKickUpwardSpeedPercent
-      value: 0
+      propertyPath: MomentumSpeedThreshold
+      value: 0.7
       objectReference: {fileID: 0}
     - target: {fileID: 4956798120613141442, guid: 2f0db1d09454e5e48a3267ad5d87754e, type: 3}
       propertyPath: MinHorizontalSpeedForUpwardKick
@@ -2835,6 +2841,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5744021758823700908, guid: 84c7e10289b5c254f9025b17935aa33d, type: 3}
+      propertyPath: m_Drag
+      value: 0.66
+      objectReference: {fileID: 0}
     - target: {fileID: 6040196774741554148, guid: 84c7e10289b5c254f9025b17935aa33d, type: 3}
       propertyPath: m_Name
       value: Cube (2)
@@ -2902,7 +2912,7 @@ PrefabInstance:
       objectReference: {fileID: 1022245354}
     - target: {fileID: 2909941957951055806, guid: e69f5920940e8ac429ebee5e5584b2ac, type: 3}
       propertyPath: m_VersionIndex
-      value: 4550
+      value: 4553
       objectReference: {fileID: 0}
     - target: {fileID: 6172841935210366428, guid: e69f5920940e8ac429ebee5e5584b2ac, type: 3}
       propertyPath: m_Name

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96435f1a8335cde4e8ca90db4f3a7d05, type: 3}
   m_Name: VerticalSpikeCombo
   m_EditorClassIdentifier: 
-  ComboMessage: Combo detected!
-  Cooldown: 3
+  ComboMessage: "Hoy me subo al sooool \U0001F3B5"
+  Cooldown: 1
   Axis: 0
-  ThresholdMultiplier: 1
+  ThresholdMultiplier: 5
