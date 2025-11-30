@@ -57,9 +57,6 @@ namespace CrazyRooftop.City
                 
                 Vector3 cityCenter = cityGenerator.GetCityCenter();
                 float distanceFromCenter = Vector3.Distance(building.transform.position, cityCenter);
-                
-                Debug.Log($"Player spawned on building {buildingData.buildingId} at {roofPosition}");
-                Debug.Log($"Distance from city center: {distanceFromCenter:F1} units");
             }
             else
             {

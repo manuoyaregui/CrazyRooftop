@@ -206,7 +206,7 @@ namespace CrazyRooftop.Environment
             if (isCrazyMode)
             {
                 // CRAZY MODE: Rocket-like physics launch (player stays on platform)
-                Debug.Log($"Platform {gameObject.name} CRAZY LAUNCHING like a rocket with force {crazyLaunchForce}!");
+                // CRAZY MODE: Rocket-like physics launch (player stays on platform)
                 
                 // Initialize velocity for physics simulation
                 currentVelocity = launchDirection * crazyLaunchForce;
@@ -226,7 +226,7 @@ namespace CrazyRooftop.Environment
             else
             {
                 // NORMAL MODE: Smooth interpolation (handled in UpdateMovement)
-                Debug.Log($"Platform {gameObject.name} launching to {targetPosition}");
+                // NORMAL MODE: Smooth interpolation (handled in UpdateMovement)
                 
                 // Play particles if available
                 if (launchParticles != null)
@@ -250,7 +250,6 @@ namespace CrazyRooftop.Environment
                 // Eject in the same direction as the platform's current movement
                 Vector3 ejectVelocity = currentVelocity.normalized * ejectForce;
                 playerController.AddVelocity(ejectVelocity);
-                Debug.Log($"Player ejected in direction {currentVelocity.normalized} with force {ejectForce}!");
             }
             
             // Destroy the platform

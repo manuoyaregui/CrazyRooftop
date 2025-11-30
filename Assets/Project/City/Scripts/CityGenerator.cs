@@ -90,12 +90,10 @@ namespace CrazyRooftop.City
             if (useRandomSeed)
             {
                 currentSeed = Random.Range(int.MinValue, int.MaxValue);
-                Debug.Log($"CityGenerator: Using random seed: {currentSeed}");
             }
             else
             {
                 currentSeed = config.seed;
-                Debug.Log($"CityGenerator: Using config seed: {currentSeed}");
             }
             
             // Initialize random with seed
@@ -107,20 +105,11 @@ namespace CrazyRooftop.City
             buildingPlacer = new BuildingPlacer(config, rng);
             
             // Execute generation pipeline
-            Debug.Log("CityGenerator: Generating street layout...");
             streetLayout = streetGenerator.Generate();
             
-            Debug.Log($"CityGenerator: Generated {streetLayout.intersections.Count} intersections and {streetLayout.streets.Count} streets");
-            
-            Debug.Log("CityGenerator: Generating blocks...");
             blocks = blockGenerator.Generate(streetLayout);
             
-            Debug.Log($"CityGenerator: Generated {blocks.Count} blocks");
-            
-            Debug.Log("CityGenerator: Placing buildings...");
             buildings = buildingPlacer.PlaceBuildings(blocks, cityContainer);
-            
-            Debug.Log($"CityGenerator: City generation complete! Placed {buildings.Count} buildings");
             
             // Spawn player if enabled
             if (spawnPlayerAutomatically && playerPrefab != null)
@@ -203,8 +192,6 @@ namespace CrazyRooftop.City
             
             Vector3 center = GetCityCenter();
             
-            Debug.Log($"CityGenerator: Finding building near center {center}, search radius: {searchRadius}");
-            
             if (searchRadius <= 0f)
             {
                 // Find the absolute closest building to center
@@ -221,7 +208,6 @@ namespace CrazyRooftop.City
                     }
                 }
                 
-                Debug.Log($"CityGenerator: Found closest building at distance {closestDistance:F1}");
                 return closestBuilding;
             }
             else
@@ -237,8 +223,6 @@ namespace CrazyRooftop.City
                         candidateBuildings.Add(building);
                     }
                 }
-                
-                Debug.Log($"CityGenerator: Found {candidateBuildings.Count} buildings within radius {searchRadius}");
                 
                 if (candidateBuildings.Count > 0)
                 {
@@ -294,16 +278,6 @@ namespace CrazyRooftop.City
                 // Spawn player
                 spawnedPlayer = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
                 spawnedPlayer.name = "Player";
-                
-                Vector3 cityCenter = GetCityCenter();
-                float distanceFromCenter = Vector3.Distance(building.transform.position, cityCenter);
-                
-                Debug.Log($"CityGenerator: Player spawned on building {buildingData.buildingId}");
-                Debug.Log($"CityGenerator: City Center: {cityCenter}");
-                Debug.Log($"CityGenerator: Building XZ: ({building.transform.position.x:F1}, {building.transform.position.z:F1})");
-                Debug.Log($"CityGenerator: Building Bounds: Min Y={bounds.min.y:F1}, Max Y={bounds.max.y:F1}");
-                Debug.Log($"CityGenerator: Player Spawn Position: {spawnPosition}");
-                Debug.Log($"CityGenerator: Distance from center: {distanceFromCenter:F1} units");
             }
             else
             {
