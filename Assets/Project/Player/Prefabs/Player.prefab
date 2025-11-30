@@ -315,7 +315,7 @@ MonoBehaviour:
   MaxStableMoveSpeed: 30
   MinStableMoveSpeed: 10
   TimeToMaxSpeed: 1.3
-  DecelerationRate: 5
+  DecelerationRate: 30
   MaxCrouchSpeedPercent: 0.8
   StableMovementSharpness: 15
   OrientationSharpness: 10
@@ -339,6 +339,11 @@ MonoBehaviour:
   SlidePushMassLimit: 10
   SlidePushForceMultiplier: 5
   SlidePushUpwardAngle: 15
+  KickForwardSpeed: 10
+  KickUpwardSpeed: 2
+  KickPushForceMultiplier: 5
+  KickMomentumMultiplier: 0.5
+  MinKickUpwardSpeedPercent: 0.224
   IgnoredColliders: []
   BonusOrientationMethod: 1
   BonusOrientationSharpness: 10
@@ -347,10 +352,10 @@ MonoBehaviour:
   CameraFollowPoint: {fileID: 5409657030151739297}
   PlayerCamera: {fileID: 0}
   SlideCameraTilt: 15
-  CameraTiltSharpness: 10
+  CameraTiltSharpness: 5
   SlideFOV: 80
-  FOVSpeed: 5
-  CrouchScaleSharpness: 10
+  FOVSpeed: 100
+  CrouchScaleSharpness: 5
   CrouchedCapsuleHeight: 1
 --- !u!54 &3773336462574528092
 Rigidbody:
