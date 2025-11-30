@@ -11,6 +11,7 @@ namespace CrazyRooftop.Player
     {
         Default,
         Sliding,
+        Kick,
     }
 
     public enum OrientationMethod
@@ -94,6 +95,16 @@ namespace CrazyRooftop.Player
         [Tooltip("Upward angle in degrees added to push direction")]
         public float SlidePushUpwardAngle = 15f;
 
+        [Header("Kick")]
+        public float KickForwardSpeed = 20f;
+        public float KickUpwardSpeed = 5f;
+        public float KickPushForceMultiplier = 20f;
+        [Tooltip("Multiplier applied to current horizontal speed to add to kick speed")]
+        public float KickMomentumMultiplier = 0.5f;
+        [Range(0f, 1f)]
+        [Tooltip("Percentage of MaxStableMoveSpeed required to apply upward kick force")]
+        public float MinKickUpwardSpeedPercent = 0.3f;
+
         [Header("Misc")]
         public List<Collider> IgnoredColliders = new List<Collider>();
         public BonusOrientationMethod BonusOrientationMethod = BonusOrientationMethod.None;
@@ -129,8 +140,12 @@ namespace CrazyRooftop.Player
         public float TimeSinceLastAbleToJump { get; set; }
         public Vector3 InternalVelocityAdd { get; set; }
         public bool ShouldBeCrouching { get; private set; }
+        public bool CrouchInputDown { get; private set; }
         public bool IsCrouching { get; set; }
         public bool IsSliding { get; set; }
+        public bool HasKickedInAir { get; set; }
+        public bool KickRequested { get; set; }
+        public float TimeSinceKickRequested { get; set; }
         public Vector3 TargetMeshScale { get; set; } = Vector3.one;
         public Collider[] ProbedColliders { get; private set; } = new Collider[8];
 
@@ -141,12 +156,14 @@ namespace CrazyRooftop.Player
         // States
         private DefaultState _defaultState;
         private SlidingState _slidingState;
+        private KickState _kickState;
 
         private void Awake()
         {
             // Initialize States
             _defaultState = new DefaultState(this);
             _slidingState = new SlidingState(this);
+            _kickState = new KickState(this);
 
             // Handle initial state
             TransitionToState(CharacterStateEnum.Default);
@@ -166,8 +183,14 @@ namespace CrazyRooftop.Player
             }
             else if (CameraFollowPoint)
             {
-                 PlayerCamera = CameraFollowPoint.GetComponent<Camera>();
-                 if (PlayerCamera) _defaultFOV = PlayerCamera.fieldOfView;
+                PlayerCamera = CameraFollowPoint.GetComponent<Camera>();
+                if (PlayerCamera) _defaultFOV = PlayerCamera.fieldOfView;
+            }
+
+            if (PlayerCamera == null)
+            {
+                PlayerCamera = Camera.main;
+                if (PlayerCamera) _defaultFOV = PlayerCamera.fieldOfView;
             }
         }
 
@@ -187,6 +210,9 @@ namespace CrazyRooftop.Player
                     break;
                 case CharacterStateEnum.Sliding:
                     newState = _slidingState;
+                    break;
+                case CharacterStateEnum.Kick:
+                    newState = _kickState;
                     break;
             }
 
@@ -211,6 +237,8 @@ namespace CrazyRooftop.Player
                     return _defaultState;
                 case CharacterStateEnum.Sliding:
                     return _slidingState;
+                case CharacterStateEnum.Kick:
+                    return _kickState;
                 default:
                     return null;
             }
@@ -233,9 +261,12 @@ namespace CrazyRooftop.Player
             Quaternion cameraPlanarRotation = Quaternion.LookRotation(cameraPlanarDirection, Motor.CharacterUp);
 
             // Update crouching state (Global)
+            CrouchInputDown = inputs.CrouchDown;
             if (inputs.CrouchDown)
             {
                 ShouldBeCrouching = true;
+                KickRequested = true;
+                TimeSinceKickRequested = 0f;
             }
             else if (inputs.CrouchUp)
             {
@@ -317,6 +348,9 @@ namespace CrazyRooftop.Player
                 CurrentState.AfterCharacterUpdate(deltaTime);
             }
 
+            // Update Kick buffer timer
+            TimeSinceKickRequested += deltaTime;
+
             UpdateCameraPosition(deltaTime);
             UpdateMeshScale(deltaTime);
         }
@@ -330,7 +364,7 @@ namespace CrazyRooftop.Player
                 Quaternion targetRotation = Quaternion.identity;
                 float targetFOV = _defaultFOV;
 
-                if (IsSliding)
+                if (IsSliding || CurrentCharacterStateEnum == CharacterStateEnum.Kick)
                 {
                     targetHeight = CrouchedCameraHeight;
                     targetRotation = Quaternion.Euler(0, 0, SlideCameraTilt);
@@ -369,6 +403,7 @@ namespace CrazyRooftop.Player
             if (Motor.GroundingStatus.IsStableOnGround && !Motor.LastGroundingStatus.IsStableOnGround)
             {
                 OnLanded();
+                HasKickedInAir = false; // Reset kick on landing
             }
             else if (!Motor.GroundingStatus.IsStableOnGround && Motor.LastGroundingStatus.IsStableOnGround)
             {

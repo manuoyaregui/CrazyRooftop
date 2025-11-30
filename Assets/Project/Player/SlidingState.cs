@@ -69,73 +69,108 @@ namespace CrazyRooftop.Player
         {
             if (Motor.GroundingStatus.IsStableOnGround)
             {
-                Vector3 effectiveGroundNormal = Motor.GroundingStatus.GroundNormal;
-                Vector3 slideDirectionOnSlope = Motor.GetDirectionTangentToSurface(_slideDirection, effectiveGroundNormal).normalized;
-                
-                float slopeDot = Vector3.Dot(slideDirectionOnSlope, Motor.CharacterUp);
-                
-                if (slopeDot < PlayerController.SlideDownSlopeThreshold)
-                {
-                    _slideSpeed += Controller.SlideGravity * Controller.SlopeSlideGravityMultiplier * -slopeDot * deltaTime;
-                }
-                else
-                {
-                    _slideSpeed -= _currentSlideDecelerationRate * deltaTime;
-                }
-                
-                bool shouldEndSlide = false;
-                
-                if (_slideSpeed <= Controller.MinSlideEndSpeed)
-                {
-                    shouldEndSlide = true;
-                }
-                
-                if (!Controller.ShouldBeCrouching)
-                {
-                    shouldEndSlide = true;
-                }
-                
-                if (shouldEndSlide)
-                {
-                    Controller.TransitionToState(CharacterStateEnum.Default);
-                    
-                    if (Controller.ShouldBeCrouching)
-                    {
-                        Controller.IsCrouching = true;
-                        Motor.SetCapsuleDimensions(0.5f, Controller.CrouchedCapsuleHeight, Controller.CrouchedCapsuleHeight * 0.5f);
-                        Controller.TargetMeshScale = new Vector3(1f, 0.5f, 1f);
-                    }
-                    else
-                    {
-                        Motor.SetCapsuleDimensions(0.5f, 2f, 1f);
-                        if (Motor.CharacterOverlap(
-                            Motor.TransientPosition,
-                            Motor.TransientRotation,
-                            Controller.ProbedColliders,
-                            Motor.CollidableLayers,
-                            QueryTriggerInteraction.Ignore) > 0)
-                        {
-                            Controller.IsCrouching = true;
-                            Motor.SetCapsuleDimensions(0.5f, Controller.CrouchedCapsuleHeight, Controller.CrouchedCapsuleHeight * 0.5f);
-                            Controller.TargetMeshScale = new Vector3(1f, 0.5f, 1f);
-                        }
-                        else
-                        {
-                            Controller.TargetMeshScale = new Vector3(1f, 1f, 1f);
-                            Controller.IsCrouching = false;
-                        }
-                    }
-                }
-                
-                currentVelocity = slideDirectionOnSlope * _slideSpeed;
+                HandleGroundMovement(deltaTime, ref currentVelocity);
             }
             else
             {
-                Controller.TransitionToState(CharacterStateEnum.Default);
-                currentVelocity += Controller.Gravity * deltaTime;
+                HandleAirMovement(deltaTime, ref currentVelocity);
             }
             
-            // Handle jumping
+            HandleJumping(deltaTime, ref currentVelocity);
+            
+            if (Controller.InternalVelocityAdd.sqrMagnitude > 0f)
+            {
+                currentVelocity += Controller.InternalVelocityAdd;
+                Controller.InternalVelocityAdd = Vector3.zero;
+            }
+        }
+
+        private void HandleGroundMovement(float deltaTime, ref Vector3 currentVelocity)
+        {
+            Vector3 effectiveGroundNormal = Motor.GroundingStatus.GroundNormal;
+            Vector3 slideDirectionOnSlope = Motor.GetDirectionTangentToSurface(_slideDirection, effectiveGroundNormal).normalized;
+            
+            float slopeDot = Vector3.Dot(slideDirectionOnSlope, Motor.CharacterUp);
+            
+            if (slopeDot < PlayerController.SlideDownSlopeThreshold)
+            {
+                _slideSpeed += Controller.SlideGravity * Controller.SlopeSlideGravityMultiplier * -slopeDot * deltaTime;
+            }
+            else
+            {
+                _slideSpeed -= _currentSlideDecelerationRate * deltaTime;
+            }
+            
+            if (CheckSlideEndConditions())
+            {
+                EndSlide();
+            }
+            
+            currentVelocity = slideDirectionOnSlope * _slideSpeed;
+        }
+
+        private void HandleAirMovement(float deltaTime, ref Vector3 currentVelocity)
+        {
+            // Airborne logic
+            currentVelocity += Controller.Gravity * deltaTime;
+            currentVelocity *= (1f / (1f + (Controller.Drag * deltaTime)));
+
+            // If user releases the slide key, transition to default
+            if (!Controller.ShouldBeCrouching)
+            {
+                Controller.TransitionToState(CharacterStateEnum.Default);
+            }
+        }
+
+        private bool CheckSlideEndConditions()
+        {
+            if (_slideSpeed <= Controller.MinSlideEndSpeed)
+            {
+                return true;
+            }
+            
+            if (!Controller.ShouldBeCrouching)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private void EndSlide()
+        {
+            Controller.TransitionToState(CharacterStateEnum.Default);
+            
+            if (Controller.ShouldBeCrouching)
+            {
+                Controller.IsCrouching = true;
+                Motor.SetCapsuleDimensions(0.5f, Controller.CrouchedCapsuleHeight, Controller.CrouchedCapsuleHeight * 0.5f);
+                Controller.TargetMeshScale = new Vector3(1f, 0.5f, 1f);
+            }
+            else
+            {
+                Motor.SetCapsuleDimensions(0.5f, 2f, 1f);
+                if (Motor.CharacterOverlap(
+                    Motor.TransientPosition,
+                    Motor.TransientRotation,
+                    Controller.ProbedColliders,
+                    Motor.CollidableLayers,
+                    QueryTriggerInteraction.Ignore) > 0)
+                {
+                    Controller.IsCrouching = true;
+                    Motor.SetCapsuleDimensions(0.5f, Controller.CrouchedCapsuleHeight, Controller.CrouchedCapsuleHeight * 0.5f);
+                    Controller.TargetMeshScale = new Vector3(1f, 0.5f, 1f);
+                }
+                else
+                {
+                    Controller.TargetMeshScale = new Vector3(1f, 1f, 1f);
+                    Controller.IsCrouching = false;
+                }
+            }
+        }
+
+        private void HandleJumping(float deltaTime, ref Vector3 currentVelocity)
+        {
             Controller.JumpedThisFrame = false;
             Controller.TimeSinceJumpRequested += deltaTime;
             if (Controller.JumpRequested)
@@ -161,12 +196,6 @@ namespace CrazyRooftop.Player
                     Controller.JumpConsumed = true;
                     Controller.JumpedThisFrame = true;
                 }
-            }
-            
-            if (Controller.InternalVelocityAdd.sqrMagnitude > 0f)
-            {
-                currentVelocity += Controller.InternalVelocityAdd;
-                Controller.InternalVelocityAdd = Vector3.zero;
             }
         }
 

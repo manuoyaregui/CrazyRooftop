@@ -117,6 +117,17 @@ namespace CrazyRooftop.Player
 
                 currentVelocity += Controller.Gravity * deltaTime;
                 currentVelocity *= (1f / (1f + (Controller.Drag * deltaTime)));
+
+                // Check for Kick
+                if (Controller.KickRequested && !Controller.HasKickedInAir)
+                {
+                    // 0.2s buffer for kick input
+                    if (Controller.TimeSinceKickRequested < 0.2f)
+                    {
+                        Controller.KickRequested = false;
+                        Controller.TransitionToState(CharacterStateEnum.Kick);
+                    }
+                }
             }
 
             // Handle jumping
