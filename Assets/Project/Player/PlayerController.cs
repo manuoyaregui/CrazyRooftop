@@ -199,6 +199,7 @@ namespace CrazyRooftop.Player
             // Register with ComboManager if it exists
             if (ComboManager.Instance != null)
             {
+                Debug.Log("PlayerController registered with ComboManager");
                 ComboManager.Instance.RegisterPlayer(this);
             }
         }

@@ -37,6 +37,25 @@ namespace CrazyRooftop.Player
                     detector.Reset();
                 }
             }
+
+            Debug.Log("[ComboManager] Initialized!");
+        }
+
+        private void Start()
+        {
+            // Fallback: If player wasn't registered during Awake, try to find it
+            if (PlayerController == null)
+            {
+                PlayerController = FindObjectOfType<PlayerController>();
+                if (PlayerController != null)
+                {
+                    Debug.Log("[ComboManager] Player found via fallback search!");
+                }
+                else
+                {
+                    Debug.LogWarning("[ComboManager] No PlayerController found in scene!");
+                }
+            }
         }
 
         /// <summary>
